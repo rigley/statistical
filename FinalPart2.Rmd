@@ -1,0 +1,89 @@
+---
+title: "Tooth Growth Analysis"
+output: html_document
+author: Chris Grafer
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+```
+
+
+## Overview
+The purpose of this paper is to analyze the ToothGrowth dataset in R and reach a conclusion on whether the data supports either the claim that the delivery method and/or dosage affect tooth growth in guinea pigs.
+
+## Data Summary
+The ToothGrowth data set contains data from an experiment where 60 guinea pigs were divided into 10 groups and provided with doses of either Vitaman C (VC) or Orange Juice (OJ) in three different doses (0.5, 1.0, 2.0 mg / day). The tooth length was then measured. The following scatterplot shows the length by supplement and dosage:
+
+```{r echo=FALSE}
+qplot(x = dose,  
+      y = len, 
+      data = ToothGrowth, 
+      facets = . ~ supp, 
+      xlab = "Dosage (mg/day)", 
+      ylab = "Length of Tooth Growth", 
+      colour = supp)
+```
+
+The following table summarizes the relevant statistics:
+
+
+```{r echo = FALSE}
+smry <- summarize(group_by(ToothGrowth, supp, dose), 
+                  m = mean(len), 
+                  sd = sqrt(var(len)), 
+                  min = min(len), 
+                  max = max(len))
+col_names <- c("Supplement", "Dosage",
+               "Mean", "Standard Deviation",
+               "Minimum", "Maximum")
+kable(smry, digits = 3, col.names = col_names)
+```
+
+
+## Tooth Growth Related to Supplement
+To evaluate whether the data supports the claim that the type of supplement influences tooth growth, we will use the t-statistic to construct confidence intervals. We will assume the the groups that recieve Vitaman C are independent of the groups that recieve orange juice, and that each group has it's own variance.  The relevant t-test is calculated as:
+
+```{r}
+supp_test <- t.test(len ~ supp, data= ToothGrowth, paired = FALSE, var.equal = FALSE)
+```
+Since we are performing a two group test, the 95% confidence interval will tell us whether the difference in the means is statistically significant at the 5% level. Based on the fact that zero is within the 95% confidence interval, the differnece in means is not statistically signficant. 
+```{r echo = FALSE}
+
+supp_names <- c("Mean OJ", "Mean VC", "Difference", "95% Confidence Interval")
+x<-  cbind(supp_test$estimate[1],
+            supp_test$estimate[2],
+            supp_test$estimate[1] - supp_test$estimate[2])
+x <- format(x, digits = 6)
+x <- cbind(x, paste(format(supp_test$conf[1], digits = 6),
+                " to ",
+                format(supp_test$conf[2], digits = 6)))
+rownames(x) <- NULL
+kable(x, digits = 3, col.names = supp_names)
+
+```
+
+
+## Tooth Growth Related to Dosage
+We can perform t-tests and compare the various dosage levels and determine whether the result is statistaically significant at the 95% confidence interval.
+```{r echo = FALSE}
+low_dose <- ToothGrowth %>% filter(dose %in% c(1.0, 0.5))
+high_dose <- ToothGrowth %>% filter(dose %in% c(2.0, 1.0))
+ext_dose <- ToothGrowth %>% filter(dose %in% c(2.0, 0.5))
+supp_test1 <- t.test(len ~ dose, data= low_dose, paired = FALSE, var.equal = FALSE)
+supp_test2 <- t.test(len ~ dose, data= high_dose, paired = FALSE, var.equal = FALSE)
+supp_test3 <- t.test(len ~ dose, data= ext_dose, paired = FALSE, var.equal = FALSE)
+
+print(supp_test1)
+print(supp_test2)
+print(supp_test3)
+
+```
+
+
+
+
+## Conclusion
